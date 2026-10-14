@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Legeplan">
+<meta name="robots" content="noindex, nofollow">
+<title>Legeplan Potenzfunktionen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: Arbeitstisch fürs iPad quer – oben Kopfleiste, Mitte vier Spalten des Legeplans, unten die Kartenleiste.
+   Präsentation: eigene helle Beamer-Ansicht mit großer Schrift, folienweise. */
+:root{
+  --bg:#F3F6F9; --surface:#FFFFFF; --ink:#16212E; --muted:#56626F; --line:#CDD6E1;
+  --accent:#1F4E79; --accent-ink:#FFFFFF; --accent-soft:#E2EBF5; --zone:#EAEFF5;
+  --always:#2E6B30; --always-soft:#E4F0E4; --mark:#A84A0C; --mark-soft:#FBEADD;
+  --shadow:0 1px 2px rgba(22,33,46,.10),0 3px 10px rgba(22,33,46,.07); --ghost:#97A3B1;
+  --f:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F151D; --surface:#17212D; --ink:#E5EBF2; --muted:#9BA8B7; --line:#2C3A4B;
+  --accent:#86B6E4; --accent-ink:#0F151D; --accent-soft:#1C3149; --zone:#131C27;
+  --always:#7FC783; --always-soft:#18291D; --mark:#F2A46D; --mark-soft:#3A2416;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 3px 10px rgba(0,0,0,.25); --ghost:#5D6B7B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151D; --surface:#17212D; --ink:#E5EBF2; --muted:#9BA8B7; --line:#2C3A4B;
+  --accent:#86B6E4; --accent-ink:#0F151D; --accent-soft:#1C3149; --zone:#131C27;
+  --always:#7FC783; --always-soft:#18291D; --mark:#F2A46D; --mark-soft:#3A2416;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 3px 10px rgba(0,0,0,.25); --ghost:#5D6B7B; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);height:100%}
+body{color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%;margin:0}
+button,input,textarea{font-family:inherit}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+sup{font-size:.72em;line-height:0}
+.m{font-style:italic}
+.label{font-weight:600;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hinweis{font-size:.88rem;color:var(--muted)}
+.btn{font-weight:600;font-size:.92rem;border-radius:8px;padding:8px 12px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:40px;white-space:nowrap}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.warn{background:var(--mark);border-color:var(--mark);color:var(--surface)}
+
+.nojs{position:fixed;inset:0;z-index:200;background:#FFFFFF;color:#0E1621;padding:max(24px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 24px max(20px,env(safe-area-inset-left,0px));font-size:17px;line-height:1.45;overflow:auto}
+.nojs h2{color:#A84A0C;margin:0 0 .4em;font-size:1.3em}
+.nojs p{margin:.5em 0;max-width:40em}
+/* ---------- Arbeitsansicht ---------- */
+.app{height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding-block:10px 8px}
+.bar h1{font-size:1.15rem;margin:0;color:var(--accent);font-weight:700;line-height:1.15}
+.bar .sub{font-size:.8rem;color:var(--muted)}
+.bar .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.names{font-size:16px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--ink);width:min(260px,60vw)}
+.tabs{display:flex;gap:4px;background:var(--zone);border-radius:10px;padding:3px}
+.tab{border:0;background:transparent;color:var(--ink);font-weight:600;font-size:.88rem;padding:7px 11px;border-radius:8px;cursor:pointer;min-height:36px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+.view{min-height:0}
+.view[hidden]{display:none!important}
+
+.plan{height:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding-bottom:8px}
+.zone{background:var(--zone);border:1.5px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:0;min-width:0}
+.zone-head{background:var(--accent-soft);border-bottom:1.5px solid var(--line);border-radius:var(--r) var(--r) 0 0;padding:7px 9px;flex:none}
+.zone-head .pre{display:block;font-size:.68rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.zone-head .t{font-size:.9rem;line-height:1.25}
+.zone.always .zone-head{background:var(--always-soft)}
+.zone .list{flex:1;min-height:60px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:7px;padding:7px}
+.zone.hot,.tray.hot{border-color:var(--accent);background:var(--accent-soft)}
+.armed .zone,.armed .tray{border-style:dashed;border-color:var(--accent);cursor:pointer}
+
+.tray{background:var(--zone);border:1.5px solid var(--line);border-radius:var(--r);margin-bottom:max(10px,env(safe-area-inset-bottom,0px));display:grid;grid-template-rows:auto auto;min-width:0}
+.tray-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px 0;flex-wrap:wrap}
+.tray .list{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:7px 10px 10px;min-height:96px;scroll-snap-type:x proximity}
+.tray .card{flex:0 0 232px;scroll-snap-align:start;touch-action:pan-x}
+.zone .card{touch-action:pan-y}
+.tray .empty{color:var(--muted);font-size:.9rem;padding:14px 4px}
+
+.card{position:relative;background:var(--surface);border:1.5px solid var(--accent);border-radius:9px;padding:7px 8px 6px;box-shadow:var(--shadow);display:grid;gap:5px;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;min-width:0}
+.card.sel{outline:3px solid var(--accent);outline-offset:1px;background:var(--accent-soft)}
+.card .top{display:flex;gap:7px;align-items:flex-start}
+.nr{font-weight:700;font-size:.78rem;background:var(--accent);color:var(--accent-ink);border-radius:5px;padding:2px 6px;flex:none}
+.txt{font-size:.9rem;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.foot{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bbtn{font-weight:600;font-size:.8rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:4px 8px;cursor:pointer;min-height:32px}
+.bbtn.leer{color:var(--muted);font-weight:500}
+.combo{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.chip{font-size:.74rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:3px 8px;cursor:pointer;min-height:30px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.korr{font-size:.72rem;font-weight:600;color:var(--mark);background:var(--mark-soft);border-radius:5px;padding:2px 6px}
+input.eigen{width:100%;font-size:16px;border:1px solid var(--line);border-radius:6px;padding:4px 7px;background:var(--bg);color:var(--ink)}
+.ghost{position:fixed;z-index:80;pointer-events:none;opacity:.94;transform:rotate(-1.5deg);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+.card.dragging{opacity:.3}
+
+/* Auswahlleiste (Antippen statt Ziehen) */
+.selbar{position:fixed;left:0;right:0;bottom:0;z-index:70;background:var(--surface);border-top:1.5px solid var(--accent);box-shadow:0 -6px 20px rgba(0,0,0,.12);padding:10px max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.selbar .what{font-weight:600;margin-right:4px}
+
+/* C1 / C2 */
+.scroll{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;display:grid;gap:10px;align-content:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;min-width:0}
+.panel h2{font-size:1rem;margin:0 0 4px}
+.panel ol{margin:4px 0 0;padding-left:1.3em;display:grid;gap:3px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-top:8px}
+.pick{display:flex;gap:8px;align-items:flex-start;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 9px;cursor:pointer;font-size:.88rem;line-height:1.3;min-height:44px}
+.pick[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.c2list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px;margin-top:8px}
+.c2row{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font-size:.88rem}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.seg button{border:0;background:var(--surface);color:var(--ink);font-weight:600;font-size:.78rem;padding:6px 9px;cursor:pointer;min-height:36px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.plotbox{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start}
+.slider{display:grid;gap:2px;margin-bottom:10px}
+.slider input{width:100%}
+.slider .v{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+textarea{width:100%;min-height:84px;font-size:16px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend > span::before{content:"";display:inline-block;width:22px;border-top:3px solid var(--accent);vertical-align:middle;margin-right:5px}
+.legend > span.g::before{border-top:2px dashed var(--ghost)}
+svg text{fill:var(--muted);font-size:10px}
+
+/* Bögen (Sheets) */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,16,24,.45);z-index:120;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);color:var(--ink);width:min(720px,100%);max-height:88vh;max-height:88dvh;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:14px 14px 0 0;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:10px}
+.sheet h2{margin:0;font-size:1.1rem}
+.sheet .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.opts{display:grid;gap:6px}
+.opt{display:grid;grid-template-columns:2.8em 1fr;gap:8px;text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:.93rem;line-height:1.35}
+.opt b{color:var(--accent)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.blist{display:grid;gap:5px}
+.bitem{display:grid;grid-template-columns:2.6em 1fr;gap:6px;font-size:.93rem}
+.bitem b{color:var(--accent)}
+.types{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.types figure{margin:0;background:var(--zone);border-radius:8px;padding:6px;text-align:center}
+.types figcaption{font-size:.84rem;color:var(--muted)}
+.codebox{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;min-height:70px;word-break:break-all}
+.ok{color:var(--always);font-size:.9rem}
+.err{color:var(--mark);font-size:.9rem}
+table.ueb{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+table.ueb th,table.ueb td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:center;vertical-align:top}
+table.ueb th:first-child,table.ueb td:first-child{text-align:left}
+table.ueb td.max{font-weight:700;color:var(--accent)}
+.badge{font-size:.72rem;font-weight:700;border-radius:5px;padding:2px 6px;white-space:nowrap}
+.badge.einig{background:var(--always-soft);color:var(--always)}
+.badge.strittig{background:var(--mark-soft);color:var(--mark)}
+.tablewrap{overflow-x:auto}
+
+/* ---------- Präsentation (immer hell, Beamer) ---------- */
+.pres{position:fixed;inset:0;z-index:100;background:#FFFFFF;color:#0E1621;display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+  font-size:clamp(15px,calc(.95vw + 1.05vh),30px);padding:calc(.6em + env(safe-area-inset-top,0px)) max(.9em,env(safe-area-inset-right,0px)) calc(.5em + env(safe-area-inset-bottom,0px)) max(.9em,env(safe-area-inset-left,0px));color-scheme:light}
+.pres[hidden]{display:none!important}
+.pres .ph{display:flex;justify-content:space-between;align-items:baseline;gap:1em;border-bottom:3px solid #1F4E79;padding-bottom:.3em}
+.pres .ph h2{margin:0;font-size:1.25em;color:#1F4E79;line-height:1.15}
+.pres .ph .who{font-size:.85em;color:#3D4955;text-align:right}
+.pres .stage{min-height:0;overflow:auto;padding-block:.6em}
+.pres .pn{display:flex;justify-content:space-between;align-items:center;gap:.5em;flex-wrap:wrap}
+.pres .pn .grp{display:flex;gap:.4em;align-items:center;flex-wrap:wrap}
+.pbtn{font-size:max(15px,.7em);font-weight:600;border:2px solid #1F4E79;background:#FFFFFF;color:#1F4E79;border-radius:.45em;padding:.35em .8em;cursor:pointer;min-height:44px}
+.pbtn:disabled{opacity:.35;cursor:default}
+.pbtn.on{background:#A84A0C;border-color:#A84A0C;color:#FFFFFF}
+.pbtn.pri{background:#1F4E79;color:#FFFFFF}
+.pres .count{font-size:max(14px,.7em);color:#3D4955;font-variant-numeric:tabular-nums}
+.p4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5em;height:100%}
+.pcol{border:2.5px solid #1F4E79;border-radius:.4em;display:flex;flex-direction:column;min-height:0;min-width:0;background:#F7F9FC}
+.pcol.always{border-color:#2E6B30}
+.pcol .h{background:#1F4E79;color:#FFFFFF;padding:.3em .45em;font-size:.72em;line-height:1.2;font-weight:600}
+.pcol.always .h{background:#2E6B30}
+.pcol .l{padding:.35em;display:flex;flex-direction:column;gap:.35em;overflow:auto;min-height:0}
+.pcard{background:#FFFFFF;border:2px solid #1F4E79;border-radius:.35em;padding:.3em .4em;font-size:.68em;line-height:1.25;cursor:pointer;text-align:left;color:#0E1621;display:grid;gap:.2em}
+.pcard .pnr{font-weight:800;color:#1F4E79;margin-right:.3em}
+.pcard .pb{font-size:.88em;color:#3D4955}
+.pcard.korr{border-color:#A84A0C;border-style:dashed}
+.pcard .pk{font-size:.85em;font-weight:700;color:#A84A0C}
+.pone{display:grid;gap:.6em;align-content:start}
+.pone .lead{font-size:1.05em;margin:0}
+.pone .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,17em),1fr));gap:.6em}
+.pone .pcard{font-size:.9em;padding:.5em .6em;border-width:2.5px}
+.pone .pcard .txt{font-size:1.05em}
+.pfocus{position:fixed;inset:0;z-index:110;background:rgba(14,22,33,.6);display:flex;align-items:center;justify-content:center;padding:4vmin}
+.pfocus .box{background:#FFFFFF;color:#0E1621;border:4px solid #1F4E79;border-radius:.5em;max-width:min(60em,92vw);max-height:90vh;overflow:auto;padding:1em 1.2em;font-size:clamp(18px,calc(1.3vw + 1.4vh),40px);display:grid;gap:.5em}
+.pfocus .big{font-size:1.25em;line-height:1.3}
+.pfocus .bt{font-size:.85em;color:#3D4955}
+.pfocus .ctrl{display:flex;flex-wrap:wrap;gap:.4em}
+.pres table.ueb{font-size:.72em;color:#0E1621}
+.pres table.ueb th,.pres table.ueb td{border-bottom:1.5px solid #C5CFDA;padding:.25em .4em}
+.pres table.ueb td.max{color:#1F4E79}
+.pres .badge.einig{background:#E4F0E4;color:#2E6B30}
+.pres .badge.strittig{background:#FBEADD;color:#A84A0C}
+.pres .ptxt{font-size:.85em;white-space:pre-wrap;background:#F7F9FC;border:2px solid #C5CFDA;border-radius:.35em;padding:.4em .6em}
+.pres .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8em}
+.pres .two h3{margin:0 0 .3em;font-size:.95em;color:#1F4E79}
+
+/* Schmale Bildschirme: normale Seite statt Arbeitstisch */
+@media (max-width:760px),(max-height:520px){
+  html,body{height:auto}
+  .app{height:auto;display:flex;flex-direction:column}
+  .app > .view{order:2}
+  .app > .tray{order:1}
+  .plan{height:auto;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .zone .list{max-height:none;overflow:visible}
+  .tray{margin-block:8px}
+  .tray .list{flex-wrap:wrap;overflow:visible}
+  .tray .card{flex:1 1 220px;touch-action:pan-y}
+  .scroll{height:auto;overflow:visible}
+  .grid2,.plotbox{grid-template-columns:minmax(0,1fr)}
+  .types{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .p4{grid-template-columns:repeat(2,minmax(0,1fr));height:auto}
+  .pres .two{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:480px){.plan{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<div class="nojs" id="nojs">
+  <h2>Diese Ansicht führt die App nicht aus</h2>
+  <p>Sie sehen die Datei in einer Vorschau (z.&nbsp;B. in Google Drive, itslearning oder der Dateien-App). Dort laufen keine Programme – deshalb lassen sich Karten und Knöpfe nicht bedienen.</p>
+  <p><b>So geht es:</b> Öffnen Sie den Link zur App in <b>Safari</b> (bzw. einem Browser). Den Link bekommen Sie von Ihrer Lehrkraft.</p>
+</div>
+<div class="app" id="app">
+  <div class="bar">
+    <div>
+      <h1>Legeplan Potenzfunktionen</h1>
+      <div class="sub"><span class="m">f</span>(<span class="m">x</span>) = <span class="m">x</span><sup class="m">q</sup> mit <span class="m">q</span> ∈ ℤ, <span class="m">q</span> ≠ 0 · Mathematik EF</div>
+    </div>
+    <div class="grp">
+      <label class="label" for="names">Paar</label>
+      <input id="names" class="names" placeholder="Ihre Namen" autocomplete="off">
+      <button class="btn pri" id="go-pres">Präsentieren</button>
+      <button class="btn" id="go-menu" aria-haspopup="dialog">Mehr …</button>
+    </div>
+  </div>
+  <div class="bar" style="padding-top:0">
+    <nav class="tabs" role="tablist" aria-label="Bereiche">
+      <button class="tab" role="tab" id="tab-plan" data-tab="plan">Legeplan</button>
+      <button class="tab" role="tab" id="tab-c1" data-tab="c1">C1 · <span class="m">x</span><sup>1</sup> und <span class="m">x</span><sup>0</sup></button>
+      <button class="tab" role="tab" id="tab-c2" data-tab="c2">C2 · Faktor <span class="m">a</span></button>
+    </nav>
+    <div class="grp">
+      <button class="btn" id="go-auftrag">Auftrag</button>
+      <button class="btn" id="go-bs">Bausteine B1–B11</button>
+      <button class="btn" id="go-types">Prüfhilfe: vier Typen</button>
+    </div>
+  </div>
+
+  <section class="view" id="view-plan" aria-labelledby="tab-plan"><div class="plan" id="plan"></div></section>
+  <section class="view" id="view-c1" aria-labelledby="tab-c1" hidden><div class="scroll">
+    <div class="panel"><h2>C1 · Passen <span class="m">x</span><sup>1</sup> und <span class="m">x</span><sup>0</sup> ins System?</h2>
+      <p class="hinweis" style="margin:0">Im Selbstlernheft gilt <span class="m">x</span><sup>0</sup> = 1 für <span class="m">x</span> ≠ 0.</p>
+      <ol><li>Wählen Sie für beide Funktionen alle Eigenschaftskarten, die zutreffen.</li><li>Beurteilen Sie die Aussage: „<span class="m">x</span><sup>0</sup> passt als Potenzfunktion mit geradem Exponenten in den Legeplan.“</li></ol></div>
+    <div class="grid2">
+      <div class="panel"><h2><span class="m">f</span>(<span class="m">x</span>) = <span class="m">x</span><sup>1</sup></h2><div class="picks" id="picks-x1"></div></div>
+      <div class="panel"><h2><span class="m">g</span>(<span class="m">x</span>) = <span class="m">x</span><sup>0</sup></h2><div class="picks" id="picks-x0"></div></div>
+    </div>
+    <div class="panel"><label class="label" for="c1-text">(2) Ihre Beurteilung</label><textarea id="c1-text" placeholder="Die Aussage stimmt … / stimmt nicht …, denn …"></textarea></div>
+  </div></section>
+  <section class="view" id="view-c2" aria-labelledby="tab-c2" hidden><div class="scroll">
+    <div class="panel"><h2>C2 · Ausblick: der Faktor <span class="m">a</span> in <span class="m">f</span>(<span class="m">x</span>) = <span class="m">a</span> · <span class="m">x<sup>q</sup></span></h2>
+      <ol><li>Stellen Sie <span class="m">a</span> &lt; 0 ein und variieren Sie <span class="m">q</span>. Entscheiden Sie für jede Karte: Bleibt die Eigenschaft für <span class="m">a</span> · <span class="m">x<sup>q</sup></span> erhalten, wenn sie für <span class="m">x<sup>q</sup></span> gilt – oder ändert sie sich?</li><li>Beschreiben Sie, wie der Graph von −<span class="m">x<sup>q</sup></span> aus dem Graphen von <span class="m">x<sup>q</sup></span> hervorgeht, und begründen Sie das am Term.</li></ol></div>
+    <div class="panel plotbox">
+      <div>
+        <div class="slider"><label for="sa">Faktor <span class="m">a</span> = <span class="v" id="va"></span></label><input type="range" id="sa" min="-3" max="3" step="0.5" value="-1"></div>
+        <div class="slider"><label for="sq">Exponent <span class="m">q</span> = <span class="v" id="vq"></span></label><input type="range" id="sq" min="-4" max="4" step="1" value="2"></div>
+        <div class="legend"><span id="lg-f"></span><span class="g" id="lg-g"></span></div>
+        <p class="hinweis" id="plot-note"></p>
+      </div>
+      <div id="plotwrap"></div>
+    </div>
+    <div class="panel"><h2>(1) Bleibt die Eigenschaft für <span class="m">a</span> &lt; 0 erhalten?</h2><div class="c2list" id="c2list"></div></div>
+    <div class="panel"><label class="label" for="c2-text">(2) Ihre Beschreibung und Begründung</label><textarea id="c2-text" placeholder="Der Graph entsteht durch …, denn …"></textarea></div>
+  </div></section>
+
+  <div class="tray" id="tray" data-zone="0">
+    <div class="tray-head"><span class="label">Kartenstapel</span><span class="hinweis" id="tray-info"></span></div>
+    <div class="list" id="list-0"></div>
+  </div>
+</div>
+
+<div class="selbar" id="selbar" hidden role="toolbar" aria-label="Ausgewählte Karte ablegen"></div>
+
+<div class="sheet-bg" id="sheet-bg" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="head"><div><span class="label" id="sheet-kicker"></span><h2 id="sheet-title"></h2></div><button class="btn" id="sheet-close">Schließen</button></div>
+  <div id="sheet-body"></div>
+</div></div>
+
+<div class="pres" id="pres" hidden aria-label="Präsentation">
+  <div class="ph"><h2 id="p-title"></h2><div class="who" id="p-who"></div></div>
+  <div class="stage" id="p-stage"></div>
+  <div class="pn">
+    <div class="grp"><button class="pbtn" id="p-prev" aria-label="Zurück">‹ Zurück</button><button class="pbtn pri" id="p-next" aria-label="Weiter">Weiter ›</button><span class="count" id="p-count"></span></div>
+    <div class="grp"><button class="pbtn" id="p-korr" aria-pressed="false">Im Plenum korrigieren</button><button class="pbtn" id="p-full">Vollbild</button><button class="pbtn" id="p-exit">Beenden</button></div>
+  </div>
+</div>
+<div class="pfocus" id="pfocus" hidden></div>
+
+<script>
+(function(){
+"use strict";
+var nj=document.getElementById("nojs"); if(nj) nj.parentNode.removeChild(nj);
+/* ===== Inhalte (keine Lösungen in dieser Datei) ===== */
+const X='<span class="m">x</span>';
+const CARDS=[
+ {id:1,t:`<span class="m">D</span> = ℝ ∖ {0}`},
+ {id:2,t:`Der Graph ist symmetrisch zur <span class="m">y</span>-Achse.`},
+ {id:3,t:`<span class="m">W</span> = ℝ`},
+ {id:4,t:`Der Graph verläuft durch <span class="m">P</span>(1 | 1).`},
+ {id:5,t:`Für ${X} &gt; 0 steigt der Graph.`},
+ {id:6,t:`Die Funktionswerte sind nie negativ.`},
+ {id:7,t:`Für ${X} → ±∞ gilt <span class="m">f</span>(${X}) → 0: Der Graph nähert sich der ${X}-Achse.`},
+ {id:8,t:`Für ${X} → −∞ gilt <span class="m">f</span>(${X}) → −∞.`},
+ {id:9,t:`Der Graph verläuft durch <span class="m">Q</span>(−1 | 1).`},
+ {id:10,t:`Der Graph verläuft durch <span class="m">O</span>(0 | 0).`},
+ {id:11,t:`<span class="m">W</span> = ]0; ∞[`},
+ {id:12,t:`Der Graph ist punktsymmetrisch zum Ursprung.`},
+ {id:13,t:`Die Funktion hat keine Nullstelle.`},
+ {id:14,t:`Für ${X} → 0 wird |<span class="m">f</span>(${X})| beliebig groß.`},
+ {id:15,t:`Eigene Eigenschaft`,eigen:true}
+];
+const BS={
+ 1:`Für gerades <span class="m">q</span> gilt (−${X})<sup class="m">q</sup> = ${X}<sup class="m">q</sup>.`,
+ 2:`Für ungerades <span class="m">q</span> gilt (−${X})<sup class="m">q</sup> = −${X}<sup class="m">q</sup>.`,
+ 3:`Potenzen mit geradem Exponenten sind nie negativ. Beim Bilden des Kehrwerts bleibt das Vorzeichen erhalten.`,
+ 4:`${X}<sup>−<span class="m">n</span></sup> = 1/${X}<sup class="m">n</sup> – und durch 0 kann man nicht teilen.`,
+ 5:`0<sup class="m">n</sup> = 0`,
+ 6:`Für ${X} &gt; 0 gilt: Je größer ${X}, desto größer ${X}<sup class="m">n</sup> und desto kleiner 1/${X}<sup class="m">n</sup>.`,
+ 7:`Ist |${X}| groß, dann ist auch |${X}<sup class="m">n</sup>| groß.`,
+ 8:`Der Kehrwert einer Zahl mit großem Betrag liegt nahe bei 0.`,
+ 9:`Der Kehrwert einer Zahl nahe 0 hat einen großen Betrag.`,
+ 10:`1<sup class="m">q</sup> = 1 für jede ganze Zahl <span class="m">q</span>.`,
+ 11:`Ein Bruch 1/${X}<sup class="m">n</sup> ist nie 0, denn sein Zähler ist 1.`
+};
+const ZONES=[
+ {z:1,pre:"Hängt nur davon ab, ob …",t:`<span class="m">q</span> <b>gerade</b> oder <b>ungerade</b> ist`,short:"gerade/ungerade"},
+ {z:2,pre:"Hängt nur davon ab, ob …",t:`<span class="m">q</span> <b>positiv</b> oder <b>negativ</b> ist`,short:"positiv/negativ"},
+ {z:3,pre:"Hängt ab von …",t:`<b>beidem</b>`,short:"beidem"},
+ {z:4,pre:"Gilt immer",t:`für <b>jede</b> Potenzfunktion`,short:"jede Potenzfunktion",always:true}
+];
+const ZSHORT={0:"Stapel",1:"gerade/ungerade",2:"positiv/negativ",3:"beidem",4:"jede Potenzfunktion"};
+const COMBOS=[["g+","gerade, q > 0"],["u+","ungerade, q > 0"],["g-","gerade, q < 0"],["u-","ungerade, q < 0"]];
+const CLAB={"g+":"gerade, q > 0","u+":"ungerade, q > 0","g-":"gerade, q < 0","u-":"ungerade, q < 0"};
+
+/* ===== Zustand ===== */
+const KEY="fsg-legeplan-potenzfunktionen-v2";
+const fresh=()=>({names:"",place:{},bau:{},combo:{},eigen:"",orig:{},c1:{x1:[],x0:[]},c1text:"",c2:{},c2text:"",tab:"plan",a:-1,q:2,seen:false});
+let S=fresh();
+try{const r=localStorage.getItem(KEY); if(r) S=Object.assign(fresh(),JSON.parse(r));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t); if(c) e.className=c; if(h!==undefined) e.innerHTML=h; return e;};
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cardText=(c,D)=>c.eigen? (D.eigen? esc(D.eigen) : '<span style="opacity:.6">Eigene Eigenschaft (noch leer)</span>') : c.t;
+let selected=null;
+
+/* ===== Tabs ===== */
+function showTab(t){
+  S.tab=t; save();
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t)));
+  ["plan","c1","c2"].forEach(v=>$("#view-"+v).hidden=(v!==t));
+  $("#tray").hidden=(t!=="plan");
+  if(t==="c2") drawPlot();
+  setSelected(null);
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
+$("#names").value=S.names; $("#names").addEventListener("input",e=>{S.names=e.target.value;save();});
+
+/* ===== Legeplan ===== */
+function bauLabel(ch){return ch&&ch.length? "Baustein: "+ch.map(b=>"B"+b).join(" + ") : "Baustein wählen";}
+function cardEl(c){
+  const z=S.place[c.id]||0;
+  const d=el("div","card"); d.dataset.id=c.id; d.tabIndex=0; d.setAttribute("role","button");
+  d.setAttribute("aria-label","Karte E"+c.id+(z? ", liegt in Spalte "+ZSHORT[z]:", im Stapel"));
+  const top=el("div","top"); top.appendChild(el("span","nr","E"+c.id));
+  if(c.eigen){
+    const w=el("div","txt"); w.style.flex="1";
+    const inp=el("input","eigen"); inp.id="eigen-15"; inp.placeholder="Eigene Eigenschaft formulieren"; inp.value=S.eigen||""; inp.autocomplete="off";
+    inp.addEventListener("input",()=>{S.eigen=inp.value;save();});
+    ["pointerdown","click"].forEach(ev=>inp.addEventListener(ev,e=>e.stopPropagation()));
+    w.appendChild(inp); top.appendChild(w);
+  } else top.appendChild(el("span","txt",c.t));
+  d.appendChild(top);
+  if(z===3 && !c.eigen){
+    const cb=el("div","combo"); cb.appendChild(el("span","label","gilt für"));
+    COMBOS.forEach(([k,l])=>{const b=el("button","chip",l); b.type="button"; b.setAttribute("aria-pressed",String((S.combo[c.id]||[]).includes(k)));
+      b.addEventListener("pointerdown",e=>e.stopPropagation());
+      b.addEventListener("click",e=>{e.stopPropagation(); const a=S.combo[c.id]||[]; S.combo[c.id]=a.includes(k)?a.filter(x=>x!==k):a.concat(k); save(); render();});
+      cb.appendChild(b);});
+    d.appendChild(cb);
+  }
+  const f=el("div","foot");
+  const ch=S.bau[c.id]||[];
+  const bb=el("button","bbtn"+(ch.length?"":" leer"),bauLabel(ch)); bb.type="button";
+  bb.addEventListener("pointerdown",e=>e.stopPropagation());
+  bb.addEventListener("click",e=>{e.stopPropagation(); openBau(c,S,false);});
+  f.appendChild(bb);
+  if(S.orig[c.id]) f.appendChild(el("span","korr","im Plenum korrigiert"));
+  d.appendChild(f);
+  if(selected===c.id) d.classList.add("sel");
+  attachDrag(d,c.id);
+  d.addEventListener("keydown",e=>{ if(e.target!==d) return;
+    if(e.key==="Enter"||e.key===" "){e.preventDefault(); setSelected(selected===c.id?null:c.id);}
+    if(/^[0-4]$/.test(e.key)){e.preventDefault(); move(c.id,+e.key);} });
+  return d;
+}
+function render(){
+  const plan=$("#plan"); plan.innerHTML="";
+  ZONES.forEach(Z=>{
+    const z=el("div","zone"+(Z.always?" always":"")); z.dataset.zone=Z.z; z.id="zone-"+Z.z;
+    z.innerHTML=`<div class="zone-head"><span class="pre">${Z.pre}</span><span class="t">${Z.t}</span></div>`;
+    const l=el("div","list"); l.id="list-"+Z.z; z.appendChild(l); plan.appendChild(z);
+  });
+  const tray=$("#list-0"); tray.innerHTML=""; let n=0;
+  CARDS.forEach(c=>{const z=S.place[c.id]||0; if(!z) n++; $("#list-"+z).appendChild(cardEl(c));});
+  if(!n) tray.appendChild(el("div","empty","Alle Karten liegen auf dem Legeplan."));
+  $("#tray-info").textContent=n? `${n} von 15 Karten noch im Stapel · Karte ziehen oder antippen` : "";
+  document.querySelectorAll("[data-zone]").forEach(z=>{ z.onclick=e=>{ if(selected===null||e.target.closest(".card")) return; move(selected,+z.dataset.zone); }; });
+  $("#app").classList.toggle("armed",selected!==null);
+  renderSelbar();
+}
+function setSelected(id){ selected=id; render(); if(id!==null){const n=document.querySelector('.card[data-id="'+id+'"]'); n&&n.focus({preventScroll:true});} }
+function move(id,z){ if(z===0) delete S.place[id]; else S.place[id]=z; if(z!==3) delete S.combo[id]; selected=null; save(); render(); }
+function renderSelbar(){
+  const b=$("#selbar"); if(selected===null||S.tab!=="plan"){b.hidden=true; return;}
+  b.innerHTML=""; b.hidden=false;
+  b.appendChild(el("span","what","E"+selected+" ablegen in:"));
+  ZONES.forEach(Z=>{const x=el("button","btn"+((S.place[selected]||0)===Z.z?" pri":""),Z.short); x.type="button"; x.addEventListener("click",()=>move(selected,Z.z)); b.appendChild(x);});
+  const s=el("button","btn","zurück in den Stapel"); s.type="button"; s.addEventListener("click",()=>move(selected,0)); b.appendChild(s);
+  const bb=el("button","btn","Baustein …"); bb.type="button"; bb.addEventListener("click",()=>{const c=CARDS.find(c=>c.id===selected); openBau(c,S,false);}); b.appendChild(bb);
+  const x=el("button","btn","Abbrechen"); x.type="button"; x.addEventListener("click",()=>setSelected(null)); b.appendChild(x);
+}
+
+/* ===== Ziehen: Finger, Stift, Maus ===== */
+function attachDrag(node,id){
+  node.addEventListener("pointerdown",ev=>{
+    if(ev.pointerType==="mouse"&&ev.button!==0) return;
+    const sx=ev.clientX,sy=ev.clientY; let ghost=null,hot=null,moved=false,canceled=false,timer=null;
+    const rect=node.getBoundingClientRect(),ox=sx-rect.left,oy=sy-rect.top;
+    const scroller=node.closest(".list");
+    const onMove=e=>{
+      if(canceled) return;
+      if(!moved&&Math.hypot(e.clientX-sx,e.clientY-sy)>8){
+        moved=true; try{node.setPointerCapture(e.pointerId);}catch(_){}
+        ghost=node.cloneNode(true); ghost.classList.add("ghost"); ghost.classList.remove("sel"); ghost.style.width=rect.width+"px"; document.body.appendChild(ghost); node.classList.add("dragging");
+      }
+      if(moved){
+        e.preventDefault();
+        ghost.style.left=(e.clientX-ox)+"px"; ghost.style.top=(e.clientY-oy)+"px";
+        const t=document.elementFromPoint(e.clientX,e.clientY); const z=t&&t.closest("[data-zone]");
+        if(hot!==z){hot&&hot.classList.remove("hot"); hot=z; hot&&hot.classList.add("hot");}
+        // Mitscrollen in der Zielspalte
+        const l=z&&z.querySelector(".list");
+        if(l&&l.scrollHeight>l.clientHeight){const r=l.getBoundingClientRect(); if(e.clientY>r.bottom-40) l.scrollTop+=12; else if(e.clientY<r.top+40) l.scrollTop-=12;}
+      }
+    };
+    const fin=e=>{
+      cleanup();
+      if(canceled) return;
+      if(moved){ ghost.remove(); node.classList.remove("dragging"); hot&&hot.classList.remove("hot"); if(hot) move(id,+hot.dataset.zone); else render(); }
+      else setSelected(selected===id?null:id);
+    };
+    const cancel=()=>{ canceled=true; cleanup(); if(ghost){ghost.remove(); node.classList.remove("dragging"); hot&&hot.classList.remove("hot");} };
+    function cleanup(){ node.removeEventListener("pointermove",onMove); node.removeEventListener("pointerup",fin); node.removeEventListener("pointercancel",cancel); }
+    node.addEventListener("pointermove",onMove,{passive:false}); node.addEventListener("pointerup",fin); node.addEventListener("pointercancel",cancel);
+  });
+}
+
+/* ===== Bögen ===== */
+let sheetClose=null;
+function openSheet(kicker,title,body,onClose){
+  $("#sheet-kicker").textContent=kicker; $("#sheet-title").innerHTML=title;
+  const b=$("#sheet-body"); b.innerHTML=""; if(typeof body==="string") b.innerHTML=body; else b.appendChild(body);
+  sheetClose=onClose||null; $("#sheet-bg").hidden=false; $("#sheet-close").focus();
+}
+function closeSheet(){ $("#sheet-bg").hidden=true; const f=sheetClose; sheetClose=null; f&&f(); }
+$("#sheet-close").addEventListener("click",closeSheet);
+$("#sheet-bg").addEventListener("click",e=>{if(e.target.id==="sheet-bg") closeSheet();});
+
+function openBau(c,D,isPlenum){
+  const wrap=el("div"); wrap.style.display="grid"; wrap.style.gap="8px";
+  wrap.appendChild(el("p","hinweis","Wählen Sie einen oder zwei Bausteine. Nochmals tippen hebt die Wahl auf."));
+  const opts=el("div","opts"); const msg=el("span","hinweis","");
+  const draw=()=>{ opts.innerHTML=""; const ch=D.bau[c.id]||[];
+    Object.keys(BS).map(Number).forEach(n=>{ const b=el("button","opt",`<b>B${n}</b><span>${BS[n]}</span>`); b.type="button"; b.setAttribute("aria-pressed",String(ch.includes(n)));
+      b.addEventListener("click",()=>{ let a=(D.bau[c.id]||[]).slice();
+        if(a.includes(n)) a=a.filter(x=>x!==n); else if(a.length>=2){msg.textContent="Höchstens zwei Bausteine – heben Sie erst eine Wahl auf."; return;} else a.push(n);
+        if(isPlenum) noteOrig(D,c.id);
+        D.bau[c.id]=a; msg.textContent=""; persist(D); draw(); });
+      opts.appendChild(b); }); };
+  draw(); wrap.appendChild(opts); wrap.appendChild(msg);
+  openSheet("Baustein für E"+c.id, cardText(c,D), wrap, ()=>{ render(); if(isPlenum) renderPres(); });
+}
+
+$("#go-bs").addEventListener("click",()=>{
+  openSheet("Nachschlagen","Begründungsbausteine B1–B11",
+   `<p class="hinweis" style="margin:0">Hier ist immer <span class="m">n</span> ∈ ℕ, <span class="m">n</span> ≠ 0: ${X}<sup class="m">n</sup> hat einen positiven, ${X}<sup>−<span class="m">n</span></sup> = 1/${X}<sup class="m">n</sup> einen negativen Exponenten.</p><div class="blist">`+
+   Object.keys(BS).map(n=>`<div class="bitem"><b>B${n}</b><span>${BS[n]}</span></div>`).join("")+`</div>`);
+});
+$("#go-types").addEventListener("click",()=>{
+  openSheet("Prüfhilfe","Die vier Typen",`<p class="hinweis" style="margin:0">Prüfen Sie eine Eigenschaft an allen vier Graphen: Ändert sie sich, wenn nur gerade/ungerade wechselt (x² ↔ x³) oder nur das Vorzeichen (x² ↔ x⁻²)?</p><div class="types">`+
+   [[2,"gerade, q > 0"],[3,"ungerade, q > 0"],[-2,"gerade, q < 0"],[-1,"ungerade, q < 0"]].map(([q,l])=>`<figure>${graphSVG([{fn:x=>powr(x,q),color:"var(--accent)"}],150,130,26,{ticks:true})}<figcaption>${X}<sup>${q<0?"−"+(-q):q}</sup> · ${l}</figcaption></figure>`).join("")+`</div>`);
+});
+const AUFTRAG=`<ol style="margin:0;padding-left:1.3em;display:grid;gap:4px">
+ <li>Ordnen Sie jede Eigenschaftskarte einer Spalte zu. Prüfen Sie dazu an ${X}<sup>2</sup>, ${X}<sup>3</sup>, ${X}<sup>−2</sup>, ${X}<sup>−1</sup>, für welche die Eigenschaft gilt (Prüfhilfe).</li>
+ <li>Wählen Sie auf jeder Karte den Begründungsbaustein. Manche Karten brauchen zwei. Bei „beidem“ geben Sie zusätzlich an, für welche Kombination die Eigenschaft gilt.</li>
+ <li>Vergleichen Sie mit einem Nachbarpaar. Wo Sie sich nicht einig sind, begründen Sie Ihre Zuordnung.</li>
+ <li>Bereiten Sie die Präsentation vor: Tragen Sie Ihre Namen ein und tippen Sie auf „Präsentieren“.</li></ol>
+ <p class="hinweis">Bedienung: Karte ziehen – oder antippen und unten die Spalte wählen. Kontrolliert wird im Unterrichtsgespräch. Schnell fertig? Formulieren Sie auf Karte E15 eine eigene Eigenschaft.</p>`;
+$("#go-auftrag").addEventListener("click",()=>openSheet("Phase 2 · zu zweit · ca. 15 min","Auftrag",AUFTRAG));
+
+/* ===== Ergebnis-Code, Kursübersicht, Neu beginnen ===== */
+function toCode(D){
+  const o={v:2,n:D.names,p:D.place,b:D.bau,c:D.combo,e:D.eigen,o:D.orig,c1:D.c1,c1t:D.c1text,c2:D.c2,c2t:D.c2text};
+  const b=btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  return "LP2:"+b;
+}
+function fromCode(s){
+  let b=s.trim().replace(/^LP2:/,"").replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4) b+="=";
+  const o=JSON.parse(decodeURIComponent(escape(atob(b))));
+  return Object.assign(fresh(),{names:o.n||"",place:o.p||{},bau:o.b||{},combo:o.c||{},eigen:o.e||"",orig:o.o||{},c1:o.c1||{x1:[],x0:[]},c1text:o.c1t||"",c2:o.c2||{},c2text:o.c2t||""});
+}
+function copyText(txt,ta,out){
+  const fb=()=>{ta.focus(); ta.select(); out.className="hinweis"; out.textContent="Text ist markiert – kopieren Sie ihn mit „Kopieren“ bzw. ⌘C.";};
+  try{ navigator.clipboard.writeText(txt).then(()=>{out.className="ok"; out.textContent="Kopiert.";},fb); }catch(e){fb();}
+}
+$("#go-menu").addEventListener("click",()=>{
+  const w=el("div"); w.style.display="grid"; w.style.gap="12px";
+  w.innerHTML=`<div class="panel"><h2>Ergebnis-Code</h2><p class="hinweis" style="margin:0 0 6px">Geben Sie diesen Code ab (z. B. in itslearning), wenn Ihre Lehrkraft Ihr Ergebnis am eigenen Gerät zeigen soll.</p>
+   <textarea class="codebox" id="m-code" readonly></textarea><div class="row" style="display:flex;gap:8px;align-items:center;margin-top:6px"><button class="btn pri" id="m-copy">Code kopieren</button><span id="m-out"></span></div></div>
+   <div class="panel"><h2>Für die Lehrkraft: Codes einlesen</h2><p class="hinweis" style="margin:0 0 6px">Einen oder mehrere Ergebnis-Codes einfügen (jede Zeile ein Code). Mit einem Code zeigen Sie das Ergebnis dieses Paares. Mit mehreren entsteht eine Kursübersicht: Sie zeigt, bei welchen Karten die Paare sich uneinig sind.</p>
+   <textarea class="codebox" id="m-in" placeholder="LP2:…"></textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn pri" id="m-read">Einlesen</button><span id="m-err"></span></div><div id="m-res"></div></div>
+   <div class="panel"><h2>Neu beginnen</h2><p class="hinweis" style="margin:0 0 6px">Löscht Legeplan, Bausteine, C1 und C2 auf diesem Gerät.</p><div id="m-reset"></div></div>`;
+  openSheet("Mehr","Teilen, einlesen, neu beginnen",w);
+  const code=toCode(S); $("#m-code").value=code;
+  $("#m-copy").addEventListener("click",()=>copyText(code,$("#m-code"),$("#m-out")));
+  $("#m-read").addEventListener("click",()=>{
+    const codes=($("#m-in").value.match(/LP2:[A-Za-z0-9_\-]+/g)||[]); const err=$("#m-err"); const res=$("#m-res"); res.innerHTML=""; err.textContent=""; err.className="err";
+    if(!codes.length){err.textContent="Kein Code gefunden. Ein Code beginnt mit „LP2:“."; return;}
+    const data=[]; codes.forEach((c,i)=>{try{data.push(fromCode(c));}catch(e){err.textContent="Code "+(i+1)+" ist unvollständig und wurde übersprungen.";}});
+    if(!data.length) return;
+    const list=el("div"); list.style.display="grid"; list.style.gap="6px"; list.style.marginTop="8px";
+    data.forEach((D,i)=>{const r=el("div","",""); r.style.display="flex"; r.style.gap="8px"; r.style.alignItems="center"; r.style.flexWrap="wrap";
+      r.appendChild(el("span","",`<b>${esc(D.names)||"Paar "+(i+1)}</b> · ${Object.keys(D.place).length} Karten gelegt`));
+      const b=el("button","btn","Präsentieren"); b.type="button"; b.addEventListener("click",()=>{closeSheet(); startPres(D,true);}); r.appendChild(b); list.appendChild(r);});
+    res.appendChild(list);
+    if(data.length>1){const b=el("button","btn pri","Kursübersicht zeigen ("+data.length+" Paare)"); b.type="button"; b.style.marginTop="8px"; b.addEventListener("click",()=>{closeSheet(); startOverview(data);}); res.appendChild(b);}
+  });
+  const rr=$("#m-reset"); const ask=()=>{ rr.innerHTML=""; const b=el("button","btn","Alles löschen …"); b.type="button"; b.addEventListener("click",()=>{ rr.innerHTML='<span class="hinweis">Wirklich alles löschen?</span> '; const y=el("button","btn warn","Ja, löschen"), n=el("button","btn","Abbrechen"); y.type=n.type="button";
+      y.addEventListener("click",()=>{S=fresh(); S.seen=true; save(); $("#names").value=""; closeSheet(); render(); renderC1(); renderC2(); showTab("plan");}); n.addEventListener("click",ask); rr.appendChild(y); rr.appendChild(document.createTextNode(" ")); rr.appendChild(n); y.focus(); }); rr.appendChild(b); }; ask();
+});
+
+/* ===== Präsentation ===== */
+let P=null, pGuest=false, pSlides=[], pIdx=0, pKorr=false, pOverview=null;
+function persist(D){ if(D===S) save(); }
+function noteOrig(D,id){ if(!D.orig[id]) D.orig[id]={z:D.place[id]||0,b:(D.bau[id]||[]).slice()}; }
+function slidesFor(D){
+  const s=[{k:"all"}]; ZONES.forEach(Z=>s.push({k:"z",z:Z.z}));
+  const c1=(D.c1.x1||[]).length+(D.c1.x0||[]).length; if(c1||D.c1text) s.push({k:"c1"});
+  if(Object.values(D.c2||{}).some(Boolean)||D.c2text) s.push({k:"c2"});
+  return s;
+}
+function startPres(D,guest){ P=D; pGuest=!!guest; pOverview=null; pSlides=slidesFor(D); pIdx=0; pKorr=false; $("#pres").hidden=false; renderPres(); $("#p-next").focus(); }
+function startOverview(list){ P=null; pOverview=list; pSlides=[{k:"ov"}]; pIdx=0; pKorr=false; $("#pres").hidden=false; renderPres(); }
+function bauText(D,id){ const ch=D.bau[id]||[]; if(!ch.length) return '<span class="pb">kein Baustein gewählt</span>'; return ch.map(b=>`<span class="pb"><b>B${b}:</b> ${BS[b]}</span>`).join(""); }
+function korrText(D,id){ const o=D.orig[id]; if(!o) return ""; const parts=[]; if(o.z!==(D.place[id]||0)) parts.push("vorher: "+ZSHORT[o.z]); const ob=(o.b||[]).map(b=>"B"+b).join("+")||"–", nb=(D.bau[id]||[]).map(b=>"B"+b).join("+")||"–"; if(ob!==nb) parts.push("Baustein vorher: "+ob); return `<span class="pk">im Plenum korrigiert${parts.length?" · "+parts.join(" · "):""}</span>`; }
+function pcard(D,c,full){
+  const b=el("button","pcard"+(D.orig[c.id]?" korr":"")); b.type="button";
+  const combo=(D.place[c.id]===3&&(D.combo[c.id]||[]).length)? `<span class="pb"><b>gilt für:</b> ${(D.combo[c.id]).map(k=>CLAB[k]).join("; ")}</span>`:"";
+  const bs=full? bauText(D,c.id) : `<span class="pb">${(D.bau[c.id]||[]).map(x=>"B"+x).join(" + ")||"kein Baustein"}</span>`;
+  b.innerHTML=`<span class="txt"><span class="pnr">E${c.id}</span>${cardText(c,D)}</span>${combo}${bs}${korrText(D,c.id)}`;
+  b.addEventListener("click",()=>openFocus(D,c));
+  return b;
+}
+function renderPres(){
+  const st=$("#p-stage"); st.innerHTML=""; const sl=pSlides[pIdx];
+  $("#p-count").textContent=(pIdx+1)+" / "+pSlides.length;
+  $("#p-prev").disabled=pIdx===0; $("#p-next").disabled=pIdx===pSlides.length-1;
+  $("#p-korr").hidden=!!pOverview; $("#p-korr").classList.toggle("on",pKorr); $("#p-korr").setAttribute("aria-pressed",String(pKorr));
+  $("#p-korr").textContent=pKorr? "Korrigieren: an" : "Im Plenum korrigieren";
+  if(pOverview){ $("#p-title").textContent="Kursübersicht · Legeplan"; $("#p-who").textContent=pOverview.length+" Paare"; st.appendChild(overviewTable(pOverview,true)); return; }
+  $("#p-who").textContent=(P.names? P.names : "Paar")+(pGuest?" · eingelesener Code":"");
+  if(sl.k==="all"){
+    $("#p-title").textContent="Unser Legeplan";
+    const g=el("div","p4");
+    ZONES.forEach(Z=>{const col=el("div","pcol"+(Z.always?" always":"")); col.innerHTML=`<div class="h">${Z.pre} ${Z.t}</div>`; const l=el("div","l");
+      CARDS.filter(c=>(P.place[c.id]||0)===Z.z).forEach(c=>l.appendChild(pcard(P,c,false))); col.appendChild(l); g.appendChild(col);});
+    st.appendChild(g);
+    const rest=CARDS.filter(c=>!P.place[c.id]&&!(c.eigen&&!P.eigen)).length;
+    if(rest){const p=el("p","",`<span style="font-size:.7em;color:#3D4955">${rest} Karte(n) noch nicht gelegt.</span>`); p.style.margin=".3em 0 0"; st.appendChild(p);}
+  } else if(sl.k==="z"){
+    const Z=ZONES.find(z=>z.z===sl.z); $("#p-title").innerHTML=`Spalte: ${Z.pre} ${Z.t}`;
+    const w=el("div","pone"); const cs=CARDS.filter(c=>(P.place[c.id]||0)===Z.z);
+    w.appendChild(el("p","lead",cs.length? (Z.z===3? "Für welche Kombination gilt die Eigenschaft – und warum braucht man beide Informationen?" : "Unsere Karten und die Begründungen:") : "In dieser Spalte liegt keine Karte."));
+    const g=el("div","cards"); cs.forEach(c=>g.appendChild(pcard(P,c,true))); w.appendChild(g); st.appendChild(w);
+  } else if(sl.k==="c1"){
+    $("#p-title").innerHTML=`Niveau C1 · Passen ${X}<sup>1</sup> und ${X}<sup>0</sup> ins System?`;
+    const w=el("div"); w.style.display="grid"; w.style.gap=".6em";
+    const two=el("div","two"); [["x1",`${X}<sup>1</sup>`],["x0",`${X}<sup>0</sup>`]].forEach(([k,l])=>{const d=el("div"); d.appendChild(el("h3","","Karten für "+l)); const g=el("div"); g.style.display="grid"; g.style.gap=".35em";
+      (P.c1[k]||[]).slice().sort((a,b)=>a-b).forEach(id=>{const c=CARDS.find(c=>c.id===id); const b=el("div","pcard",`<span class="txt"><span class="pnr">E${id}</span>${c.t}</span>`); g.appendChild(b);}); if(!(P.c1[k]||[]).length) g.appendChild(el("span","","–")); d.appendChild(g); two.appendChild(d);});
+    w.appendChild(two); if(P.c1text){w.appendChild(el("h3","",'<span style="color:#1F4E79">Unsere Beurteilung</span>')); w.appendChild(el("div","ptxt",esc(P.c1text)));} st.appendChild(w);
+  } else if(sl.k==="c2"){
+    $("#p-title").innerHTML=`Niveau C2 · der Faktor <span class="m">a</span> &lt; 0`;
+    const w=el("div"); w.style.display="grid"; w.style.gap=".6em"; const two=el("div","two");
+    [["b","bleibt erhalten"],["a","ändert sich"]].forEach(([k,l])=>{const d=el("div"); d.appendChild(el("h3","",l)); const g=el("div"); g.style.display="grid"; g.style.gap=".35em";
+      CARDS.filter(c=>P.c2[c.id]===k).forEach(c=>g.appendChild(el("div","pcard",`<span class="txt"><span class="pnr">E${c.id}</span>${c.t}</span>`)));
+      if(!g.children.length) g.appendChild(el("span","","–")); d.appendChild(g); two.appendChild(d);});
+    w.appendChild(two); if(P.c2text){w.appendChild(el("h3","",'<span style="color:#1F4E79">Unsere Beschreibung</span>')); w.appendChild(el("div","ptxt",esc(P.c2text)));} st.appendChild(w);
+  }
+}
+function openFocus(D,c){
+  const f=$("#pfocus"); f.innerHTML=""; const box=el("div","box");
+  const combo=(D.place[c.id]===3&&(D.combo[c.id]||[]).length)? `<div class="bt"><b>gilt für:</b> ${(D.combo[c.id]).map(k=>CLAB[k]).join("; ")}</div>`:"";
+  box.innerHTML=`<div class="big"><b style="color:#1F4E79">E${c.id}</b> ${cardText(c,D)}</div><div class="bt"><b>Spalte:</b> ${ZSHORT[D.place[c.id]||0]}</div>${combo}<div class="bt" style="display:grid;gap:.25em">${bauText(D,c.id)}</div>${korrText(D,c.id)}`;
+  const ctrl=el("div","ctrl");
+  if(pKorr){
+    ctrl.appendChild(el("span","bt","Verschieben nach:"));
+    [[1,"gerade/ungerade"],[2,"positiv/negativ"],[3,"beidem"],[4,"jede"],[0,"Stapel"]].forEach(([z,l])=>{const b=el("button","pbtn"+((D.place[c.id]||0)===z?" pri":""),l); b.type="button";
+      b.addEventListener("click",()=>{ if((D.place[c.id]||0)!==z){noteOrig(D,c.id); if(z===0) delete D.place[c.id]; else D.place[c.id]=z; if(z!==3) delete D.combo[c.id]; persist(D); render();} openFocus(D,c); renderPres(); }); ctrl.appendChild(b);});
+    const bb=el("button","pbtn","Baustein ändern"); bb.type="button"; bb.addEventListener("click",()=>{f.hidden=true; openBau(c,D,true);}); ctrl.appendChild(bb);
+    if(D.place[c.id]===3){ const cc=el("div","ctrl"); cc.appendChild(el("span","bt","gilt für:")); COMBOS.forEach(([k,l])=>{const b=el("button","pbtn"+((D.combo[c.id]||[]).includes(k)?" pri":""),l); b.type="button";
+      b.addEventListener("click",()=>{noteOrig(D,c.id); const a=D.combo[c.id]||[]; D.combo[c.id]=a.includes(k)?a.filter(x=>x!==k):a.concat(k); persist(D); render(); openFocus(D,c); renderPres();}); cc.appendChild(b);}); box.appendChild(cc); }
+  }
+  const close=el("button","pbtn pri","Schließen"); close.type="button"; close.addEventListener("click",()=>{f.hidden=true;}); ctrl.appendChild(close);
+  box.appendChild(ctrl); f.appendChild(box); f.hidden=false; close.focus();
+}
+$("#pfocus").addEventListener("click",e=>{if(e.target.id==="pfocus") e.target.hidden=true;});
+$("#go-pres").addEventListener("click",()=>{setSelected(null); startPres(S,false);});
+$("#p-prev").addEventListener("click",()=>{if(pIdx>0){pIdx--; renderPres();}});
+$("#p-next").addEventListener("click",()=>{if(pIdx<pSlides.length-1){pIdx++; renderPres();}});
+$("#p-korr").addEventListener("click",()=>{pKorr=!pKorr; renderPres();});
+$("#p-exit").addEventListener("click",exitPres);
+function exitPres(){ $("#pfocus").hidden=true; $("#pres").hidden=true; try{ if(document.fullscreenElement) document.exitFullscreen(); else if(document.webkitFullscreenElement) document.webkitExitFullscreen(); }catch(e){} render(); }
+$("#p-full").addEventListener("click",()=>{ const e=document.documentElement; try{ const r=(e.requestFullscreen||e.webkitRequestFullscreen); if(r){ const p=r.call(e); p&&p.catch&&p.catch(()=>{}); } }catch(_){}});
+document.addEventListener("keydown",e=>{
+  if(!$("#pres").hidden && $("#sheet-bg").hidden){
+    if(e.key==="Escape"){ if(!$("#pfocus").hidden) $("#pfocus").hidden=true; else exitPres(); e.preventDefault(); return; }
+    if(!$("#pfocus").hidden) return;
+    if(["ArrowRight","PageDown"," "].includes(e.key)){ if(document.activeElement&&document.activeElement.classList.contains("pcard")&&e.key===" ") return; e.preventDefault(); $("#p-next").click(); }
+    if(["ArrowLeft","PageUp"].includes(e.key)){ e.preventDefault(); $("#p-prev").click(); }
+    return;
+  }
+  if(e.key==="Escape"){ if(!$("#sheet-bg").hidden) closeSheet(); else if(selected!==null) setSelected(null); }
+});
+
+/* ===== Kursübersicht (ohne Lösungen) ===== */
+function overviewTable(list,big){
+  const wrap=el("div","tablewrap"); const t=el("table","ueb");
+  let h=`<thead><tr><th>Karte</th>${ZONES.map(Z=>`<th>${Z.short}</th>`).join("")}<th>nicht gelegt</th><th></th></tr></thead><tbody>`;
+  CARDS.filter(c=>!c.eigen).forEach(c=>{
+    const cnt={0:0,1:0,2:0,3:0,4:0}; list.forEach(D=>cnt[D.place[c.id]||0]++);
+    const placed=[1,2,3,4].filter(z=>cnt[z]>0); const mx=Math.max(...[1,2,3,4].map(z=>cnt[z]));
+    const offen=cnt[0]===list.length; const einig=!offen&&placed.length===1&&cnt[0]===0;
+    h+=`<tr><td><b>E${c.id}</b> ${c.t}</td>${[1,2,3,4].map(z=>`<td class="${cnt[z]===mx&&mx>0?"max":""}">${cnt[z]||""}</td>`).join("")}<td>${cnt[0]||""}</td><td>${offen?'<span class="badge">offen</span>':einig?'<span class="badge einig">einig</span>':'<span class="badge strittig">uneinig</span>'}</td></tr>`;
+  });
+  const own=list.filter(D=>D.eigen).map(D=>`<li>${esc(D.eigen)} <span style="opacity:.7">(${esc(D.names)||"Paar"} · ${ZSHORT[D.place[15]||0]})</span></li>`).join("");
+  h+="</tbody>"; t.innerHTML=h; wrap.appendChild(t);
+  if(own) wrap.appendChild(el("div","",`<h3 style="margin:.6em 0 .2em;font-size:.85em">Eigene Eigenschaften (E15)</h3><ul style="margin:0;font-size:.75em">${own}</ul>`));
+  return wrap;
+}
+
+/* ===== C1 und C2 (ohne Kontrolle) ===== */
+function renderC1(){
+  ["x1","x0"].forEach(k=>{const box=$("#picks-"+k); box.innerHTML="";
+    CARDS.filter(c=>!c.eigen).forEach(c=>{const on=(S.c1[k]||[]).includes(c.id); const b=el("button","pick",`<span class="nr">E${c.id}</span><span>${c.t}</span>`); b.type="button"; b.setAttribute("aria-pressed",String(on));
+      b.addEventListener("click",()=>{const a=S.c1[k]||[]; S.c1[k]=a.includes(c.id)?a.filter(x=>x!==c.id):a.concat(c.id); save(); renderC1();}); box.appendChild(b);});});
+  $("#c1-text").value=S.c1text||"";
+}
+$("#c1-text").addEventListener("input",e=>{S.c1text=e.target.value;save();});
+function renderC2(){
+  const box=$("#c2list"); box.innerHTML="";
+  CARDS.filter(c=>!c.eigen).forEach(c=>{const r=el("div","c2row"); const v=S.c2[c.id];
+    r.appendChild(el("span","",`<span class="nr">E${c.id}</span> ${c.t}`));
+    const seg=el("div","seg"); [["b","bleibt"],["a","ändert sich"]].forEach(([k,l])=>{const b=el("button","",l); b.type="button"; b.setAttribute("aria-pressed",String(v===k));
+      b.addEventListener("click",()=>{ if(S.c2[c.id]===k) delete S.c2[c.id]; else S.c2[c.id]=k; save(); renderC2(); }); seg.appendChild(b);});
+    r.appendChild(seg); box.appendChild(r);});
+  $("#c2-text").value=S.c2text||"";
+}
+$("#c2-text").addEventListener("input",e=>{S.c2text=e.target.value;save();});
+
+/* ===== Graphen ===== */
+function powr(x,q){ if(x===0&&q<=0) return NaN; const v=Math.pow(Math.abs(x),q); return (x<0&&Math.abs(q)%2===1)? -v : v; }
+let gid=0;
+function graphSVG(fns,w,h,scale,opts){
+  opts=opts||{}; const cx=w/2, cy=h*(opts.cy||0.55); const xmin=-cx/scale,xmax=cx/scale,ymax=cy/scale,ymin=-(h-cy)/scale; const id="g"+(gid++);
+  let g="";
+  for(let i=Math.ceil(xmin);i<=Math.floor(xmax);i++){const X1=cx+i*scale; g+=`<line x1="${X1}" y1="0" x2="${X1}" y2="${h}" stroke="var(--line)" stroke-width="0.6"/>`;}
+  for(let j=Math.ceil(ymin);j<=Math.floor(ymax);j++){const Y=cy-j*scale; g+=`<line x1="0" y1="${Y}" x2="${w}" y2="${Y}" stroke="var(--line)" stroke-width="0.6"/>`;}
+  g+=`<line x1="0" y1="${cy}" x2="${w}" y2="${cy}" stroke="var(--muted)" stroke-width="1.2"/><line x1="${cx}" y1="0" x2="${cx}" y2="${h}" stroke="var(--muted)" stroke-width="1.2"/><text x="${w-8}" y="${cy-4}" text-anchor="end">x</text><text x="${cx+5}" y="11">y</text>`;
+  if(opts.ticks) g+=`<text x="${cx+scale}" y="${cy+12}" text-anchor="middle">1</text><text x="${cx-scale}" y="${cy+12}" text-anchor="middle">−1</text><text x="${cx-5}" y="${cy-scale+3}" text-anchor="end">1</text><text x="${cx-5}" y="${cy+scale+3}" text-anchor="end">−1</text>`;
+  let cv=""; fns.forEach(f=>{let d="",pen=false; const N=600; for(let k=0;k<=N;k++){const x=xmin+(xmax-xmin)*k/N; const y=f.fn(x); if(!isFinite(y)||Math.abs(y)>ymax*4+20){pen=false;continue;} d+=(pen?"L":"M")+(cx+x*scale).toFixed(1)+" "+(cy-y*scale).toFixed(1); pen=true;}
+    cv+=`<path d="${d}" fill="none" stroke="${f.color}" stroke-width="${f.w||2.4}" ${f.dash?'stroke-dasharray="5 4"':''} stroke-linejoin="round"/>`;});
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px;display:block;margin:auto" role="img" aria-label="${opts.label||"Graph"}"><defs><clipPath id="${id}"><rect width="${w}" height="${h}"/></clipPath></defs>${g}<g clip-path="url(#${id})">${cv}</g></svg>`;
+}
+const fmt=v=>(v<0?"−":"")+String(Math.abs(v)).replace(".",",");
+function drawPlot(){
+  const a=+S.a,q=+S.q; $("#sa").value=a; $("#sq").value=q; $("#va").textContent=fmt(a); $("#vq").textContent=fmt(q);
+  const qs=q<0?"−"+(-q):String(q);
+  $("#lg-f").innerHTML=`${fmt(a)} · ${X}<sup>${qs}</sup>`; $("#lg-g").innerHTML=`${X}<sup>${qs}</sup>`;
+  $("#plot-note").textContent= a===0? "Für a = 0 ergibt sich die Nullfunktion – dieser Fall ist ausgeschlossen." : q===0? "Für q = 0 ist x⁰ = 1 (x ≠ 0): eine Parallele zur x-Achse." : a>0? "Stellen Sie für die Aufgabe a < 0 ein." : "";
+  $("#plotwrap").innerHTML=graphSVG([{fn:x=>powr(x,q),color:"var(--ghost)",dash:true,w:2},{fn:x=>a*powr(x,q),color:"var(--accent)",w:2.8}],320,300,40,{ticks:true,cy:0.5,label:"Graph von a mal x hoch q"});
+}
+["sa","sq"].forEach(id=>$("#"+id).addEventListener("input",e=>{S[id==="sa"?"a":"q"]=+e.target.value; save(); drawPlot();}));
+
+/* ===== Start ===== */
+render(); renderC1(); renderC2(); showTab(S.tab||"plan");
+if(location.hash==="#praesentation") startPres(S,false);
+if(!S.seen){ S.seen=true; save(); openSheet("Phase 2 · zu zweit · ca. 15 min","Auftrag",AUFTRAG); }
+})();
+</script>
+
+</body>
+</html>
